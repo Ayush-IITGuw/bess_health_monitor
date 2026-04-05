@@ -176,7 +176,6 @@ def run_eda_pipeline(
         df_min,
         window=window,
         edis_min_kwh=edis_min_kwh,
-        include_context_means=include_context_means
     )
 
     # 4) Save features 
@@ -201,6 +200,5 @@ if __name__ == "__main__":
         out_dir="outputs/eda/45min",
         window="45min",
         edis_min_kwh=0.05,
-        include_context_means=True,
         plot_prefix="sys18_45m"
     )
