@@ -38,11 +38,7 @@ def load_minute_files(data_dir: Path, pattern: str) -> pd.DataFrame:
     print("[INFO] Minute-level shape:", df.shape)
     return df
 
-def battery_health(
-    df: pd.DataFrame,
-    window: str = "45min",
-    edis_min_kwh: float = 0.05
-) -> pd.DataFrame:
+def battery_health(df: pd.DataFrame,window: str = "45min",edis_min_kwh: float = 0.05) -> pd.DataFrame:
     """
     Compute 45‑minute window health proxies from minute‑level data.
 
@@ -76,27 +72,26 @@ def battery_health(
     out = pd.DataFrame(index=d.index)
 
 
-   # --------- 1) context means over the window ---------
+   #  1) context means over the window 
     out[f"T_Bat_in_C_{window}_mean"] = d["T_Bat_in_C"].resample(window).mean()
     if "P_in_W" in d.columns:
             out[f"P_in_W_{window}_mean"] = pd.to_numeric(d["P_in_W"], errors="coerce").resample(window).mean()
 
-    # --------- 2) Per-minute ΔT and window end‑minus‑start ΔT ---------
+    # 2) Per-minute ΔT and window end‑minus‑start ΔT 
     d["deltaT"] = d["T_Bat_in_C"] - d["T_Room_in_C"]
 
-    # Thermal change across the window (physics-aware): end - start
     # min_periods ~ 1/3 of window (≈15 min) to avoid almost-empty windows
     out[f"deltaT_{window}_end_minus_start"] = (
         d["deltaT"].rolling(window, min_periods=15)
                   .apply(lambda x: x.iloc[-1] - x.iloc[0], raw=False)
     )
 
-    # --------- 3) Discharge energy summed over the window ---------
+    #  3) Discharge energy summed over the window 
     out[f"Edis_{window}_kWh"] = (
         d["energy_discharge_kWh"].rolling(window, min_periods=15).sum()
     )
 
-    # --------- 4) Temperature rise per kWh (masked for low energy) ---------
+    #  4) Temperature rise per kWh (masked for low energy) 
     EPS = 1e-9
     valid = out[f"Edis_{window}_kWh"] > float(edis_min_kwh)
     trpk = out[f"deltaT_{window}_end_minus_start"] / (out[f"Edis_{window}_kWh"] + EPS)
@@ -105,10 +100,7 @@ def battery_health(
     return out
 
 
-def plot_each_series(out: pd.DataFrame,
-                     out_dir: str | Path = "outputs/eda/series",
-                     prefix: str = "system18",
-                     dpi: int = 160) -> None:
+def plot_each_series(out: pd.DataFrame,out_dir: str | Path = "outputs/eda/series",prefix: str = "system18", dpi: int = 160) -> None:
     """
     Saves one PNG per numeric column in `out`.
     File name: <prefix>_<column>.png
@@ -118,9 +110,6 @@ def plot_each_series(out: pd.DataFrame,
     num_cols = out.select_dtypes(include=[np.number]).columns.tolist()
     for col in num_cols:
         s = pd.to_numeric(out[col], errors="coerce")
-        if s.dropna().empty:
-            print(f"[SKIP] {col}: empty or non-numeric")
-            continue
 
         fig, ax = plt.subplots(figsize=(14, 4))
         s.plot(ax=ax, lw=1.2, color="tab:blue")
@@ -158,7 +147,7 @@ def run_eda_pipeline(
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # ---- 1) Load and concat all minute-level files ----
+    #  1) Load and concat all minute-level files 
     files = sorted(data_dir.glob(pattern))
     assert files, f"No files matched: {data_dir}/{pattern}"
 
@@ -173,16 +162,16 @@ def run_eda_pipeline(
 
     df_min = pd.concat(dfs, axis=0)
 
-    # ---- 2) Ensure clean, monotonic DatetimeIndex ----
+    # 2) Ensure clean, monotonic DatetimeIndex 
     if not isinstance(df_min.index, pd.DatetimeIndex):
         df_min.index = pd.to_datetime(df_min.index, errors="coerce")
     df_min = df_min[~df_min.index.isna()].sort_index()
     if df_min.index.duplicated().any():
-        df_min = df_min.groupby(level=0).mean()  # collapse duplicates by mean
+        df_min = df_min.groupby(level=0).mean()  
 
     print("[INFO] Minute-level shape:", df_min.shape)
 
-    # ---- 3) Compute window-level health features ----
+    # 3) Compute window-level health features 
     feat = battery_health(
         df_min,
         window=window,
@@ -190,12 +179,12 @@ def run_eda_pipeline(
         include_context_means=include_context_means
     )
 
-    # ---- 4) Save features ----
+    # 4) Save features 
     feat_csv = out_dir / f"window_features_{window}.csv"
     feat.to_csv(feat_csv, index=True)
     print("[WRITE]", feat_csv)
 
-    # ---- 5) Plot every numeric series ----
+    #  5) Plot every numeric series 
     plot_each_series(
         feat,
         out_dir=out_dir / "series",
