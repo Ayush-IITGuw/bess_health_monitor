@@ -15,7 +15,7 @@ pd.options.display.max_columns = 50
 
 def drop_nan(df):
     """
-    Drop any columns containing NaN entries
+    Drop any rows containing NaN entries
     """
     df = df.copy()
     df = df.replace(['', 'NaN', '?', 'None'], np.nan)
