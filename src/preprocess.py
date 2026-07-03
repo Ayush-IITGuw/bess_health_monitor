@@ -1,5 +1,5 @@
 """
-        BESS preprocessing:
+BESS preprocessing:
           - Read monthly CSV(s)
           - Parse 'Time'
           - Resample from 1s to 1min
@@ -99,8 +99,8 @@ def process_one_csv(in_path: Path, out_dir: Path, rule: str = "1min") -> Path:
     # 4) write output
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / in_path.name.replace(".csv", f"_{rule}.csv")
-    df_feat.to_csv(out_path, index=True)
-    print(f"[WRITE] {out_path.name}  shape={df_feat.shape}")
+    df_min.to_csv(out_path, index=True)
+    print(f"[WRITE] {out_path.name}  shape={df_min.shape}")
     return out_path
 
 if __name__ == "__main__":
